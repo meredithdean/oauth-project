@@ -27,13 +27,21 @@ const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET;
 passport.use(new GitHubStrategy({
   clientID: GITHUB_CLIENT_ID,
   clientSecret: GITHUB_CLIENT_SECRET,
-  callbackURL: 'http://localhost:3000/auth/github/callback'
+  callbackURL: 'http://localhost:3000/auth/github/callback',
 },
 function(accessToken, refreshToken, profile, done) {
   return done(null, profile);
-}
-)
+})
 );
+
+passport.serializeUser((user, done) => {
+  done(null, user);
+});
+
+passport.deserializeUser((user, done) => {
+  done(null, user);
+});
+
 
 
 
@@ -55,6 +63,18 @@ app.use(session({
   saveUninitialized: false,
 }));
 app.use(passport.initialize());
+app.use(passport.session());
+
+/*
+ * ensureAuthenticated Callback Function
+*/
+const ensureAuthenticated = (req, res, next) => {
+  if (req.isAuthenticated()) {
+    return next();
+  } else {
+    res.redirect('/login');
+  }
+};
 
 
 
@@ -66,7 +86,7 @@ app.get('/', (req, res) => {
   res.render('index', { user: req.user });
 })
 
-app.get('/account', (req, res) => {
+app.get('/account', ensureAuthenticated, (req, res) => {
   res.render('account', { user: req.user });
 });
 
@@ -79,6 +99,15 @@ app.get('/logout', (req, res) => {
   res.redirect('/');
 });
 
+app.get('/auth/github', passport.authenticate('github', {
+  scope: ['user']
+}));
+
+app.get('/auth/github/callback', passport.authenticate('github', {
+  failureRedirect: '/login',
+  successRedirect: '/',
+}));
+
 
 
 
@@ -88,7 +117,4 @@ app.get('/logout', (req, res) => {
 
 app.listen(PORT, () => console.log(`Listening on ${PORT}`));
 
-/*
- * ensureAuthenticated Callback Function
-*/
 
